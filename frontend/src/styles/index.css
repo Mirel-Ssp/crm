@@ -1,0 +1,42 @@
+/* 全局基础样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+  background: #f4f6f9;
+  color: #1f2937;
+}
+
+/* ==================== B6-08：移动端响应式（<768px） ==================== */
+@media (max-width: 768px) {
+  /* 固定像素宽的弹窗/抽屉限制在视口内 */
+  .el-dialog {
+    max-width: 94vw !important;
+    width: auto !important;
+    margin: 4vh auto !important;
+  }
+  .el-drawer.ltr,
+  .el-drawer.rtl {
+    max-width: 96vw;
+  }
+  /* 主内容区收紧内边距 */
+  .el-main {
+    padding: 10px !important;
+  }
+  /* 表格工具栏换行展示 */
+  .el-form--inline .el-form-item {
+    margin-right: 8px;
+  }
+  /* 分页器紧凑化 */
+  .el-pagination {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+}

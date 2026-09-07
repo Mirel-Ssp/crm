@@ -1,0 +1,5 @@
+# Docker 构建上下文排除（保持镜像构建干净）
+target/
+scripts/
+.vscode/
+*.log

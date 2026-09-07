@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://crm.example.com/workflow">
+
+  <process id="quoteApproval" name="报价单审批流程" isExecutable="true">
+    <documentation>CRM-R1 报价单审批：业务员提交后进入 MANAGER/ADMIN 审批任务，
+      审批结果通过网关回写报价单状态（APPROVED / REJECTED），由 SalesQuoteService 在任务完成后同步。</documentation>
+
+    <startEvent id="startEvent" name="提交报价单"/>
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="managerApproveTask"/>
+
+    <userTask id="managerApproveTask" name="审批报价单" flowable:candidateGroups="MANAGER,ADMIN">
+      <documentation>审批人查看报价明细并决策：通过（approved=true）或驳回（approved=false + 原因）。</documentation>
+    </userTask>
+    <sequenceFlow id="flow2" sourceRef="managerApproveTask" targetRef="decisionGateway"/>
+
+    <exclusiveGateway id="decisionGateway" name="审批结果"/>
+    <sequenceFlow id="approvedFlow" name="审批通过" sourceRef="decisionGateway" targetRef="endApproved">
+      <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="rejectedFlow" name="驳回" sourceRef="decisionGateway" targetRef="endRejected">
+      <conditionExpression xsi:type="tFormalExpression">${!approved}</conditionExpression>
+    </sequenceFlow>
+
+    <endEvent id="endApproved" name="已审批通过"/>
+    <endEvent id="endRejected" name="已驳回"/>
+  </process>
+
+</definitions>

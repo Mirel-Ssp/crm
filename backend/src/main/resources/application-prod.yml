@@ -1,0 +1,56 @@
+# =====================================================================
+# Spring Boot prod 配置（未来云端部署用：PostgreSQL + Redis + MinIO）
+# 放入后端项目：backend/src/main/resources/application-prod.yml
+#
+# 与 dev 的差异由 CacheService / ObjectStorageService 两个接口的
+# @Profile("prod") 实现承担（Redis 缓存 + MinIO S3），业务代码无感切换。
+# 地址为 docker compose 网络内的服务名，无需向公网暴露任何中间件端口。
+# =====================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/crm?currentSchema=public
+    username: crm
+    password: ${CRM_PG_PASSWORD}                 # 生产必须用环境变量，无默认值
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 30000
+
+  cache:
+    type: redis
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: ${CRM_REDIS_PASSWORD}
+      timeout: 5000
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+app:
+  storage:
+    mode: minio
+  jwt:
+    # 生产环境必须通过环境变量注入强密钥（≥32 字节），无默认值兜底，缺失则启动失败
+    secret: ${CRM_JWT_SECRET}
+    access-token-ttl-minutes: 30
+    refresh-token-ttl-days: 1
+  cors:
+    # 生产环境通过环境变量配置允许的前端域名（逗号分隔），未配置则不允许跨域（由网关处理）
+    allowed-origins: ${CRM_CORS_ALLOWED_ORIGINS:}
+
+minio:
+  endpoint: http://minio:9000
+  access-key: crm_minio
+  secret-key: ${CRM_MINIO_PASSWORD}
+  bucket:
+    attachments: crm-attachments
+    contracts: crm-contracts
+
+logging:
+  level:
+    org.hibernate.SQL: warn

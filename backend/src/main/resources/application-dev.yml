@@ -1,0 +1,48 @@
+# =====================================================================
+# Spring Boot dev 配置（方案 A：本地 PostgreSQL + Caffeine 缓存 + 本地磁盘存储）
+# 启动前确保本地 PG 已启动 ->  .\dev-env\pg.ps1 -Action Start
+#
+# 架构约定（与生产 Profile 隔离，业务代码零改动）：
+#   - 缓存：dev 用 Caffeine 进程内缓存（CacheService 接口 + @Profile("dev") 实现）
+#   - 存储：dev 用本地磁盘（ObjectStorageService 接口 + @Profile("dev") 实现）
+#   - prod 环境自动切换为 Redis + MinIO 实现（见 application-prod.yml）
+# =====================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/crm?currentSchema=public&stringtype=unspecified  # stringtype: JSONB 列直接写 JSON 字符串（审计日志 detail）
+    username: crm
+    password: ${CRM_PG_PASSWORD:crm_dev_2026}      # 环境变量优先
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+
+  # Flyway 数据库迁移（INF-DV-04：V1__init.sql 落位 db/migration）
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  cache:
+    type: caffeine                                  # 本地进程内缓存，替代 Redis
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=30m
+
+# 本地磁盘存储配置（ObjectStorageService 的 dev 实现读取）
+app:
+  storage:
+    mode: local
+    local:
+      base-dir: ./data/uploads        # 附件/合同存储根目录（相对后端运行目录）
+  jwt:
+    secret: ${CRM_JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
+    access-token-ttl-minutes: 120
+    refresh-token-ttl-days: 7
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.hibernate.SQL: off            # ORM 为 MyBatis-Plus，SQL 日志走其自身配置
+    com.crm.mapper: debug             # dev 期打印 Mapper SQL

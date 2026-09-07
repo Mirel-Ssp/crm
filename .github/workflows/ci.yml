@@ -1,0 +1,69 @@
+# =====================================================================
+# CRM CI 流水线（仓库根 = customer_management/）：push / PR 触发
+#   backend ：JDK17 + Maven 单测（PG 16 服务容器，与 dev profile 对齐）
+#   frontend：Node22 + pnpm11 类型检查与构建
+# CD：云端服务器执行 deploy/deploy.sh（见 deploy/README.md）
+# =====================================================================
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    name: Backend Test (JDK 17)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.9
+        env:
+          POSTGRES_DB: crm
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm_dev_2026   # 与 application-dev.yml 默认值对齐
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crm -d crm"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run tests (Flyway migrates on context start)
+        working-directory: backend
+        run: mvn -B verify
+
+  frontend:
+    name: Frontend Build (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm 11
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.25.0 --activate
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Type check & build (vue-tsc + vite build)
+        working-directory: frontend
+        run: pnpm build

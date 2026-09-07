@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM 客户管理系统 - 运行说明</title>
+<style>
+  :root { --primary:#409eff; --ok:#67c23a; --warn:#e6a23c; --text:#303133; --muted:#909399; }
+  * { box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",-apple-system,sans-serif; color:var(--text); max-width:960px; margin:0 auto; padding:32px 24px; line-height:1.7; }
+  h1 { border-bottom:3px solid var(--primary); padding-bottom:12px; }
+  h2 { margin-top:36px; border-left:4px solid var(--primary); padding-left:12px; }
+  h3 { margin-top:24px; }
+  code { background:#f5f7fa; padding:2px 6px; border-radius:4px; font-family:Consolas,monospace; font-size:0.92em; }
+  pre { background:#282c34; color:#abb2bf; padding:16px; border-radius:8px; overflow-x:auto; }
+  pre code { background:transparent; color:inherit; padding:0; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; }
+  th,td { border:1px solid #dcdfe6; padding:8px 12px; text-align:left; }
+  th { background:#f5f7fa; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#fff; }
+  .ok { background:var(--ok); } .info { background:var(--primary); } .warn { background:var(--warn); }
+  .tip { background:#ecf5ff; border-left:4px solid var(--primary); padding:10px 14px; border-radius:4px; margin:12px 0; }
+  .warn-box { background:#fdf6ec; border-left:4px solid var(--warn); padding:10px 14px; border-radius:4px; margin:12px 0; }
+</style>
+</head>
+<body>
+
+<h1>CRM 客户管理系统 · 运行说明</h1>
+<p>
+  <span class="badge info">批次5 交付 v0.5</span>
+  <span class="badge ok">后端测试 38/38 通过</span>
+  <span class="badge ok">端到端冲烟 83/83 通过</span>
+  <span class="badge ok">性能抽测 漏斗5000条 P95=40.8ms · STAT P95=20.4ms</span>
+  <span class="badge ok">前端构建通过 主包 10.9KB + echarts 分包</span>
+</p>
+<p>基于 Spring Boot 3 + Vue 3 的模块化单体 CRM。v0.1 交付登录认证（JWT 双令牌）→ 客户管理 → 工作台 KPI；批次2 新增权限底座 → 系统管理 → 线索闭环；批次3 新增商机管理 → 待办看板 → 报表中心 → 客户增强 → 自助改密；批次4 新增交易板块 P0 全量收口（标的/订单六态状态机/汇款核销/动态通知/交易工作台）；<b>本期（批次5）新增：客户服务工单（四态状态机 + 指派/处理/回访满意度）→ 客户价值评分（五维加权 + 每日重算 + 分层唤醒）→ 多维统计（年季月日聚合预计算 + 同环比 + 排名/标的分析 + 明细 CSV）→ WebSocket 实时推送（轮询兜底保留）→ 交易全链路集成测试 + 5000 条压测口径</b>。</p>
+
+<h2>1. 环境要求</h2>
+<table>
+  <tr><th>组件</th><th>版本</th><th>说明</th></tr>
+  <tr><td>JDK</td><td>17+</td><td>后端编译与运行</td></tr>
+  <tr><td>Maven</td><td>3.9+</td><td>后端构建（本机可用 <code>C:\Users\21925\.local\share\apache-maven-3.9.16\bin\mvn.cmd</code>）</td></tr>
+  <tr><td>Node.js + pnpm</td><td>22+ / 11+</td><td>前端构建与开发</td></tr>
+  <tr><td>PostgreSQL</td><td>16.9</td><td>本机 zip 版：<code>dev-env/pg.ps1</code> 随启随停（bin 在 <code>~\.local\share\crm-pgsql</code>）</td></tr>
+</table>
+
+<h2>2. 数据库准备</h2>
+<ol>
+  <li>启动 PostgreSQL：
+<pre><code>powershell -ExecutionPolicy Bypass -File dev-env\pg.ps1 start</code></pre></li>
+  <li>连接信息（与应用 <code>application-dev.yml</code> 一致）：
+    <table>
+      <tr><th>项</th><th>值</th></tr>
+      <tr><td>地址</td><td><code>jdbc:postgresql://127.0.0.1:5432/crm</code></td></tr>
+      <tr><td>账号 / 密码</td><td><code>crm</code> / <code>crm_dev_2026</code></td></tr>
+    </table>
+  </li>
+  <li>表结构与种子数据由 <b>Flyway 自动迁移</b>（V1 建表 + V2 种子 + V3 权限/线索种子 + V4~V7 商机/生命周期/报表迁移 + V8~V9 交易模块 + V10~V12 批次5：评分/聚合/权限 901~906/工单 remark 补列/stat_dim 放宽），无需手工执行 SQL。</li>
+</ol>
+
+<h2>3. 启动后端（端口 8080）</h2>
+<pre><code>cd customer_management\backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev</code></pre>
+<p>启动成功标志：<code>Started CrmApplication in ...</code>。健康检查：</p>
+<pre><code>curl http://127.0.0.1:8080/api/health
+# {"code":0,"data":{"db":"UP","status":"UP"}}</code></pre>
+
+<h2>4. 启动前端（端口 5173）</h2>
+<pre><code>cd customer_management\frontend
+pnpm install --ignore-scripts   # 首次
+pnpm dev</code></pre>
+<div class="tip">浏览器访问 <b>http://localhost:5173</b>（Vite 7 仅绑定 <code>::1</code>，请用 localhost 而非 127.0.0.1）。</div>
+
+<h2>5. 默认账号</h2>
+<table>
+  <tr><th>账号</th><th>密码</th><th>角色 / 数据范围</th></tr>
+  <tr><td><code>admin</code></td><td><code>admin123</code></td><td>超级管理员 / ALL</td></tr>
+</table>
+
+<h2>6. 功能清单</h2>
+<table>
+  <tr><th>模块</th><th>功能</th><th>入口</th></tr>
+  <tr><td>认证</td><td>登录、JWT 双令牌（accessToken + refreshToken 刷新）、登录即下发权限点与数据范围</td><td>/login</td></tr>
+  <tr><td>工作台</td><td>KPI：我的客户 / 今日待跟进 / 全部待办 / 近7天新增（按数据范围口径统计）；交易面板：业绩卡片、订单状态分布、待审批订单、待确认汇款、动态流（按 ALL/TEAM/SELF 角色视图聚合）</td><td>/workbench</td></tr>
+  <tr><td>客户管理</td><td>分页筛选、新增（重名校验）、编辑、软删除、详情联查；等级下拉读数据字典</td><td>/customer</td></tr>
+  <tr><td>联系人 / 跟进</td><td>详情抽屉内维护；TODO 跟进进入工作台待办</td><td>/customer → 详情</td></tr>
+  <tr><td>线索管理</td><td>公共池/我的线索、建档手机号防重、领取/分配（状态机条件更新防并发）、转客户（事务内建档）、作废</td><td>/lead</td></tr>
+  <tr><td>商机管理</td><td>建档（金额/币种/预计成交日）、阶段流转状态机（1~5 开放推进/回退留痕，6 成交/7 丢单终态不可逆）、成交联动客户生命周期 WON、丢单原因字典必填、漏斗统计（阶段数量/金额/赢率/加权预测）、丢单原因统计；终态商机禁删</td><td>/opportunity</td></tr>
+  <tr><td>待办看板</td><td>TODO 待办列表（超期置顶标红）、完成、改期</td><td>/workbench</td></tr>
+  <tr><td>客户时间轴</td><td>360° 时间轴：跟进记录 + 生命周期/等级留痕 + 商机阶段流转 按时间倒序聚合</td><td>/customer → 详情</td></tr>
+  <tr><td>客户增强</td><td>生命周期五态流转（POTENTIAL/FOLLOWING/WON/LOST/DORMANT，留痕可查）、名称/电话查重提示、客户合并（单事务搬迁联系人/跟进/商机 + 源客户软删）、custom_fields JSONB 自定义字段读写</td><td>/customer</td></tr>
+  <tr><td>报表中心</td><td>客户（等级/生命周期分布）、线索（状态分布/转化率）、商机（漏斗/丢单原因）三报表 + CSV 导出（UTF-8 BOM，Excel 直开）</td><td>/report</td></tr>
+  <tr><td>交易标的</td><td>标的档案（名称/代码/类型/价格/上下架/最小交易量/手续费率）、调价留痕、交易规则配置（审批阈值/单笔限额，管理员）</td><td>/trading</td></tr>
+  <tr><td>交易订单</td><td>下单（服务端 BigDecimal 计价，超阈值进待审批、低于阈值自动确认）、审批通过/驳回（驳回原因必填）、取消（业务员限待审批、经理限团队内未完成）、六态状态机条件更新 + 乐观锁 + trade_order_log 留痕、列表/详情三端数据范围过滤</td><td>/order-contract</td></tr>
+  <tr><td>汇款核销</td><td>汇款登记（凭证号，待确认）→ 经理到账确认 → 多对多核销（一笔汇款拆多单/一单多次汇款）：事务内 SELECT FOR UPDATE 锁单 + 双向防超核 + 订单状态原子推进（CONFIRMED→PARTIAL_DEALT→FULL_DEALT，一次性全额核销直达 FULL_DEALT）；汇款驳回</td><td>/order-contract → 汇款</td></tr>
+  <tr><td>动态通知</td><td>交易事件全量写入（下单/审批/驳回/取消/汇款登记/确认/核销完成）→ 未读数 + 动态流接口 + 顶栏铃铛；<b>批次5 升级：WebSocket 实时推送（/ws/notify，按用户定向投递），WS 断开自动回退 5s 轮询兜底</b></td><td>顶栏铃铛</td></tr>
+  <tr><td>客户服务工单（新）</td><td>工单建档（类型/优先级/SLA）、四态状态机（OPEN→PROCESSING→RESOLVED→CLOSED）、指派/改派、处理、解决（备注留痕）、回访与满意度评分（1~5 星）、满意度统计、终态禁流转</td><td>/service</td></tr>
+  <tr><td>客户价值评分（新）</td><td>五维加权评分（交易频率 30% + 累计交易额 30% + 最近活跃 20% + 汇款及时性 10% + 跟进响应度 10%）、权重可配（和校验=1）、每日 02:00 定时重算（manual=1 跳过）、分层标签（高价值/潜力/待激活/流失风险）、评分趋势（近 30/90 天）、沉默客户唤醒（超 SILENT_DAYS 无成交无跟进 → 分配业务员生成跟进待办）</td><td>/customer-value</td></tr>
+  <tr><td>多维统计（新）</td><td>年/季/月/日聚合预计算（business_stat，每日 02:30 重建 + 手动触发）、总量与同环比、业绩排名（业务员）、标的分析（占比/到账率）、交易明细多条件筛选 + CSV 导出（UTF-8 BOM）</td><td>/multi-stat</td></tr>
+  <tr><td>客户业务面板</td><td>客户详情业务 Tab：关联订单 / 汇款记录 / 业务时间轴</td><td>/customer → 详情</td></tr>
+  <tr><td>自助改密</td><td>旧密码验证 + 新密码设置，首登/重置密码后强制改密（mustChangePassword 标记复位）</td><td>右上角菜单</td></tr>
+  <tr><td>系统管理-组织</td><td>组织树增删改（删除须无子节点/成员、父变更防环）</td><td>/system → 组织管理</td></tr>
+  <tr><td>系统管理-成员</td><td>分页、创建（密码≥8位）、编辑（email/phone 留空不变更）、分配角色、重置密码、删除（内置管理员/本人保护）</td><td>/system → 成员管理</td></tr>
+  <tr><td>系统管理-角色</td><td>角色增删改 + 权限点全量分配，data_scope 变更即时生效（无需重登录）</td><td>/system → 角色权限</td></tr>
+  <tr><td>系统管理-字典</td><td>字典项 CRUD（同类型编码防重），业务下拉统一走 <code>useDict</code> 动态加载</td><td>/system → 数据字典</td></tr>
+  <tr><td>权限底座</td><td>RBAC 功能权限（@PreAuthorize/@ss.hasPerm，批次5 新增权限点 901~906：工单/评分/统计）+ 三级数据范围 ALL/TEAM/SELF（visibleOwnerIds 过滤）+ 前端菜单/按钮级（v-permission）</td><td>—</td></tr>
+  <tr><td>审计与脱敏</td><td>@AuditLog AOP 操作审计（含越权访问记录）；@Sensitive 手机号/邮箱脱敏输出</td><td>—</td></tr>
+</table>
+
+<h2>7. 测试与验证</h2>
+<h3>7.1 后端测试（单元 + 集成，需 PG 已启动）</h3>
+<pre><code>cd backend
+mvn test
+# 预期：Tests run: 38, Failures: 0, Errors: 0
+#  - CustomerFlowIntegrationTest(3)：登录→客户CRUD→跟进→工作台 全链路（事务回滚不污染数据）
+#  - SystemFlowIntegrationTest(2)：组织/成员/角色/字典全链路 + 无权限用户越权 40300
+#  - LeadFlowIntegrationTest(2)：建档→防重→领取→转客户→禁删 / 分配→作废
+#  - OppFlowIntegrationTest(1)：商机建档→阶段推进/回退→成交联动→漏斗→丢单原因 全链路
+#  - OppStageTest(4)：阶段状态机（1~5 可流转、终态/非法阶段拒绝、默认赢率符合 PRD）
+#  - OrderStateMachineTest(6)：订单六态状态机（主线流转、一次性全额核销直达 FULL_DEALT、终态禁流转、非法跳转、取消路径）
+#  - TradeFlowIntegrationTest(3)（新）：交易全链路（低额自动确认/超阈值审批/多对多核销原子推进）
+#    + 双向防超核（订单侧/汇款侧 30001）+ 并发核销同一汇款（CAS 保证恰好一个成功 40900、失败方零残留）
+#  - ScopeServiceTest(5)：ALL/TEAM/SELF 数据范围判定
+#  - SensitiveMaskerTest(5)：手机号/邮箱脱敏
+#  - JwtUtilTest(4) / ResultTest(3)</code></pre>
+<h3>7.2 端到端冲烟（需后端已启动；后端重启后方可跑新增接口）</h3>
+<pre><code>powershell -ExecutionPolicy Bypass -File scripts\smoke.ps1
+# 预期：SMOKE RESULT: 83 passed / 0 failed（可重复执行，全部使用时间戳唯一数据）
+# 覆盖：客户全链路 + 字典 + 线索闭环 + 系统管理读接口
+#      + 商机（建档/阶段流转/成交联动/漏斗/丢单统计）+ 待办（列表/改期/完成）
+#      + 三报表与 CSV 导出（BOM 校验）+ 客户查重/合并/时间轴 + 自助改密防旧密码错
+#      + 交易标的（建档/调价留痕/规则）+ 订单六态流转（阈值分流/审批/驳回/取消）
+#      + 汇款登记/确认/多对多核销（双向防超核）+ 动态流/未读 + 工作台交易聚合
+#      + 服务工单全流程（创建/指派/处理/解决/回访满意度/关闭/终态禁流转）
+#      + 客户价值（权重可读且和=1、权重非法拒绝、重算、分层列表/分布/趋势、沉默唤醒）
+#      + 多维统计（重建、MONTH 汇总、非法维度拒绝、排名/标的分析、明细 + CSV BOM）</code></pre>
+<h3>7.3 性能抽测（批次5 退出标准：客户/订单/漏斗/报表 P95 &lt; 500ms；STAT 三接口 P95 &lt; 300ms）</h3>
+<pre><code>powershell -ExecutionPolicy Bypass -File scripts\perf-check.ps1
+# 自动：psql 造 500 客户 + 500 订单 + 5000 商机 + 5000 统计订单（30 天分布）
+#       → 各接口 60 次计时（P50/P95/MAX）→ 清理造数并恢复聚合表
+# 参考：客户分页 P95=8.3ms；交易订单分页 P95=7.2ms；
+#       漏斗(5000商机) P95=40.8ms；商机报表 P95=73.1ms；
+#       STAT summary(5000订单) P95=20.4ms / rank P95=13.3ms / items P95=4.9ms</code></pre>
+<h3>7.4 前端构建（含 vue-tsc 类型检查）</h3>
+<pre><code>cd frontend
+pnpm build
+# 参考：构建 15.9s；主包 index 10.9KB；echarts 独立分包 556KB（仅三个图表页按需加载）</code></pre>
+
+<h2>8. 目录结构</h2>
+<pre><code>customer_management/
+├── backend/                          # Spring Boot 3 后端
+│   └── src/main/java/com/crm/
+│       ├── common/                   # Result/PageResult/JwtUtil/全局异常/安全上下文/审计AOP/脱敏
+│       ├── system/                   # 组织/成员/角色/字典（RBAC + UserStateService + ScopeService）
+│       ├── customer/                 # 客户/联系人/跟进 + 查重合并/生命周期/时间轴（trace 留痕）
+│       ├── lead/                     # 线索（公共池/领取/分配/转客户/作废，状态机条件更新）
+│       ├── opportunity/              # 商机（阶段状态机/漏斗/成交丢单/trace 流转留痕）
+│       ├── trade/                    # 交易（标的/订单状态机/汇款核销防超核 + NotifyService 事件流 + WebSocket 推送 + 工作台聚合）
+│       ├── svc/                      # 服务工单（四态状态机/指派/回访满意度，批次5）
+│       ├── va/                       # 客户价值评分（五维加权/分层/沉默唤醒，批次5）
+│       ├── stat/                     # 多维统计（聚合预计算/同环比/排名/明细导出，批次5）
+│       └── report/                   # 工作台 KPI + 三报表统计 + CSV 导出
+│   └── src/main/resources/
+│       └── db/migration/             # Flyway V1~V3（建表/种子/权限线索）+ V4~V7（商机/生命周期/留痕/报表）+ V8~V9（交易模块）+ V10~V12（批次5 评分/聚合/权限/修正）
+│   └── src/test/java/com/crm/        # 单元测试 + MockMvc 集成测试（含交易全链路/并发核销/状态机）
+├── frontend/                         # Vue 3 + TS + Element Plus
+│   └── src/
+│       ├── api/                      # request 封装 + 业务 API（crm/system/lead/opp/report/auth/trade/svc/value/stat）
+│       ├── composables/              # useDict 数据字典动态下拉 + useEcharts 按需注册/延迟初始化
+│       ├── views/                    # 工作台/客户/线索/商机/交易/订单汇款/服务工单/客户价值/报表/多维统计/系统管理 + 登录页
+│       └── router/ stores/           # 路由守卫 + Pinia（permissions/dataScope 持久化）
+├── scripts/
+│   ├── smoke.ps1                     # 端到端冲烟脚本（83 项断言）
+│   └── perf-check.ps1                # 性能抽测（500 条分页 + 5000 条漏斗/报表 + STAT 聚合口径 P95 计时）
+└── docs/design/                      # 设计文档（INF-DS-02 / SYS-DS-01 等）</code></pre>
+
+<h2>9. 接口约定</h2>
+<ul>
+  <li>统一响应：<code>{"code":0,"message":"success","data":...}</code>；业务错误为 <b>HTTP 200 + code≠0</b>（如 40000 参数/重名、40100 未登录、40300 越权、40400 不存在、30001 核销超限、40900 数据冲突）。</li>
+  <li>认证：请求头 <code>Authorization: Bearer &lt;accessToken&gt;</code>；令牌过期用 <code>POST /api/auth/refresh</code> 换新。</li>
+  <li>主要接口：<code>/api/customers</code>（+contacts/check-duplicate/merge/timeline/business）、<code>/api/followups</code>（+todo/done/reschedule）、<code>/api/workbench/summary|trade</code>、<code>/api/leads</code>（+claim|assign|convert|invalidate）、<code>/api/opps</code>（+stage|win|lose、/funnel、/loss-stats）、<code>/api/reports/customer|lead|opportunity</code>（+/export）、<code>/api/trade/items</code>（+on|off|price、/rules）、<code>/api/trade/orders</code>（+approve|reject|cancel）、<code>/api/trade/remit</code>（+confirm|reject|write-off）、<code>/api/notify/feed|unread|read</code>、<b><code>/api/tickets</code>（批次5：+{id}/assign|process|resolve|visit|close、/satisfaction/summary）、<code>/api/value</code>（批次5：/scores、/distribution、/scores/{id}/trend、/silent（+/{id}/assign）、/recalc、/manual、/weights）、<code>/api/stat</code>（批次5：/summary、/rank、/items、/detail（+/export）、/rebuild）</b>、<code>/api/auth/password</code>、<code>/api/system/orgs|users|roles</code>、<code>/api/dicts</code>。</li>
+  <li>实时推送：<code>ws://localhost:8080/ws/notify?token=&lt;accessToken&gt;</code>（通知事件秒级推送；前端 WS 断开自动回退 5s 轮询）。</li>
+  <li>接口文档（Swagger）：<a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a></li>
+</ul>
+
+<h2>10. 常见问题</h2>
+<div class="warn-box"><b>Q：mvn 不是内部命令？</b><br>
+Maven 未加入 PATH 时直接使用完整路径：<code>&amp; 'C:\Users\21925\.local\share\apache-maven-3.9.16\bin\mvn.cmd' test</code></div>
+<div class="warn-box"><b>Q：pnpm install 报 esbuild 校验错误？</b><br>
+使用 <code>pnpm install --ignore-scripts</code>（esbuild 二进制走 optionalDependencies 自动就位）。</div>
+<div class="warn-box"><b>Q：后端起不来提示数据库连接失败？</b><br>
+先执行 <code>dev-env\pg.ps1 start</code>，并用 <code>/api/health</code> 确认 <code>db:UP</code>。</div>
+<div class="warn-box"><b>Q：Windows PowerShell 运行中文脚本乱码/报语法错误？</b><br>
+PS 5.1 对无 BOM 的 UTF-8 脚本按 GBK 解析，脚本内请保持纯 ASCII 输出（本仓库脚本已遵循）。</div>
+<div class="warn-box"><b>Q：PS 5.1 测 WebSocket 握手失败？</b><br>
+PS 5.1 ClientWebSocket 拒绝 vite ws-proxy 的 <code>Connection: upgrade, keep-alive</code> 101 响应（RFC 合法、浏览器正常）；请用 Node 22 内置 WebSocket 客户端验证（backend/scripts/ws-t3-node.mjs）。</div>
+
+<hr>
+<p style="color:var(--muted);font-size:0.9em">生成于 2026-09-05 · 批次5 交付（SVC 服务工单 + VA 客户价值评分 + STAT 多维统计 + RTP-WS WebSocket 实时推送 + 交易全链路集成测试/并发核销验证 + 5000 条压测口径）· 后续迭代：移动端适配、消息模板化、集群部署（Redis + MinIO）</p>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# ===== Java / Maven =====
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+*.local
+
+# ===== 运行时数据（dev Profile 本地磁盘存储） =====
+data/
+uploads/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 环境配置（含密码） =====
+.env
+.env.local

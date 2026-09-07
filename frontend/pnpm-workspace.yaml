@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: set this to true or false
+# pnpm 11 构建脚本白名单（esbuild 的 postinstall 校验）
+onlyBuiltDependencies:
+  - esbuild

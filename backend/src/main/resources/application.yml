@@ -1,0 +1,41 @@
+# =====================================================================
+# CRM 后端基础配置（全环境共用）
+# =====================================================================
+
+spring:
+  application:
+    name: crm-backend
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  global-config:
+    banner: false
+    db-config:
+      logic-delete-field: deleted       # 全局软删除（BaseEntity.deleted）
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  paths-to-match: /api/**
+
+# Flowable BPMN 引擎（CRM-F4）：同步流程为主，关闭异步执行器减少常驻线程
+flowable:
+  async-executor-activate: false
+  database-schema-update: true
+  process-definition-location-prefix: classpath:/processes/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
