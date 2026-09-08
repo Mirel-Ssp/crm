@@ -24,7 +24,7 @@
           <el-button @click="reset">重置</el-button>
         </el-form-item>
         <el-form-item class="right">
-          <el-button v-permission="'contract:manage'" type="primary" plain @click="openCreate">新建合同</el-button>
+          <el-button v-permission="'contract:create'" type="primary" plain @click="openCreate">新建合同</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -57,11 +57,11 @@
         <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row.id)">详情</el-button>
-            <el-button v-if="row.signStatus === 'UNSIGNED'" v-permission="'contract:manage'" link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button v-if="row.signStatus === 'UNSIGNED'" v-permission="'contract:manage'" link type="success" @click="onSign(row)">签署</el-button>
-            <el-button v-if="row.signStatus === 'SIGNED'" v-permission="'contract:manage'" link type="success" @click="onExecute(row)">开始履行</el-button>
+            <el-button v-if="row.signStatus === 'UNSIGNED'" v-permission="'contract:create'" link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button v-if="row.signStatus === 'UNSIGNED'" v-permission="'contract:sign'" link type="success" @click="onSign(row)">签署</el-button>
+            <el-button v-if="row.signStatus === 'SIGNED'" v-permission="'contract:sign'" link type="success" @click="onExecute(row)">开始履行</el-button>
             <el-button
-              v-if="['UNSIGNED', 'SIGNED', 'EXECUTING'].includes(row.signStatus)" v-permission="'contract:manage'"
+              v-if="['UNSIGNED', 'SIGNED', 'EXECUTING'].includes(row.signStatus)" v-permission="'contract:sign'"
               link type="danger" @click="onTerminate(row)"
             >终止</el-button>
           </template>

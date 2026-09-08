@@ -25,7 +25,7 @@ import java.util.Map;
 
 /**
  * 合同接口（CRM-R3）
- * 权限：1101 contract:list 查询；1102 contract:manage 创建/签署/终止
+ * 权限：contract:list 查询；contract:create 创建/编辑草稿（UNSIGNED）；contract:sign 签署/履行/终止
  */
 @Tag(name = "合同 CONTRACT")
 @RestController
@@ -58,7 +58,7 @@ public class SalesContractController {
 
     @Operation(summary = "创建合同（UNSIGNED）", description = "需求 CRM-R3")
     @PostMapping
-    @PreAuthorize("@ss.hasPerm('contract:manage')")
+    @PreAuthorize("@ss.hasPerm('contract:create')")
     @AuditLog(action = "contract:create", targetType = "CONTRACT")
     public Result<Long> create(@CurrentUser Long uid, @Valid @RequestBody ContractSaveRequest req) {
         return Result.ok(contractService.create(uid, req));
@@ -66,7 +66,7 @@ public class SalesContractController {
 
     @Operation(summary = "编辑合同（仅 UNSIGNED）", description = "需求 CRM-R3")
     @PutMapping("/{id}")
-    @PreAuthorize("@ss.hasPerm('contract:manage')")
+    @PreAuthorize("@ss.hasPerm('contract:create')")
     @AuditLog(action = "contract:update", targetType = "CONTRACT", targetId = "#id")
     public Result<Void> update(@CurrentUser Long uid, @PathVariable Long id,
                                @Valid @RequestBody ContractSaveRequest req) {
@@ -76,7 +76,7 @@ public class SalesContractController {
 
     @Operation(summary = "签署完成（UNSIGNED→SIGNED）", description = "需求 CRM-R3")
     @PostMapping("/{id}/sign")
-    @PreAuthorize("@ss.hasPerm('contract:manage')")
+    @PreAuthorize("@ss.hasPerm('contract:sign')")
     @AuditLog(action = "contract:sign", targetType = "CONTRACT", targetId = "#id")
     public Result<Void> sign(@CurrentUser Long uid, @PathVariable Long id) {
         contractService.sign(uid, id);
@@ -85,7 +85,7 @@ public class SalesContractController {
 
     @Operation(summary = "开始履行（SIGNED→EXECUTING）", description = "需求 CRM-R3")
     @PostMapping("/{id}/execute")
-    @PreAuthorize("@ss.hasPerm('contract:manage')")
+    @PreAuthorize("@ss.hasPerm('contract:sign')")
     @AuditLog(action = "contract:execute", targetType = "CONTRACT", targetId = "#id")
     public Result<Void> execute(@CurrentUser Long uid, @PathVariable Long id) {
         contractService.execute(uid, id);
@@ -94,7 +94,7 @@ public class SalesContractController {
 
     @Operation(summary = "提前终止（→TERMINATED）", description = "需求 CRM-R3")
     @PostMapping("/{id}/terminate")
-    @PreAuthorize("@ss.hasPerm('contract:manage')")
+    @PreAuthorize("@ss.hasPerm('contract:sign')")
     @AuditLog(action = "contract:terminate", targetType = "CONTRACT", targetId = "#id")
     public Result<Void> terminate(@CurrentUser Long uid, @PathVariable Long id,
                                   @RequestBody(required = false) Map<String, String> body) {

@@ -26,7 +26,7 @@ import java.util.Map;
 
 /**
  * 多维统计接口（ST-1~ST-5）
- * 权限：906 stat:report；重建另需 va:score:manage 或管理员（此处限 ADMIN 数据范围语义由 906 + 重建走 @AuditLog）
+ * 权限：stat:report 查询（汇总/排名/明细/导出）；stat:manage 维护（全量重建）
  */
 @Tag(name = "多维统计 STAT")
 @RestController
@@ -100,9 +100,9 @@ public class MultiStatController {
                 .body(body);
     }
 
-    @Operation(summary = "全维度聚合重建（每日 02:30 自动执行，亦可手动触发）", description = "需求 ST-1 预计算")
+    @Operation(summary = "全维度聚合重建（每日 02:30 自动执行，亦可手动触发）", description = "需求 ST-1 预计算；仅经理/管理员可触发")
     @PostMapping("/rebuild")
-    @PreAuthorize("@ss.hasPerm('stat:report')")
+    @PreAuthorize("@ss.hasPerm('stat:manage')")
     @AuditLog(action = "stat:rebuild")
     public Result<Integer> rebuild(@RequestParam(required = false) String dim) {
         return Result.ok(dim == null ? statService.rebuildAll() : statService.rebuild(dim));

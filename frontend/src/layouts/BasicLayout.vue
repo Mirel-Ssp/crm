@@ -15,8 +15,8 @@
         <el-menu-item index="/opportunity">商机管理</el-menu-item>
         <el-menu-item index="/trading">交易业务</el-menu-item>
         <el-menu-item index="/order-contract">订单与合同</el-menu-item>
-        <!-- CRM-F4：审批中心（BPMN 任务中心，持 wf:task:list 者可见） -->
-        <el-menu-item v-if="userStore.hasPerm('wf:task:list')" index="/workflow">审批中心</el-menu-item>
+        <!-- CRM-F4：审批中心（BPMN 任务中心，仅持 wf:manage 者可见；移除 SALES 的 wf:task:list 后，空菜单不会再出现） -->
+        <el-menu-item v-if="userStore.hasPerm('wf:manage')" index="/workflow">审批中心</el-menu-item>
         <el-menu-item index="/service">客户服务</el-menu-item>
         <!-- B5：客户价值/多维统计（权限 904/906 持有者可见） -->
         <el-menu-item v-if="userStore.hasPerm('va:score:list')" index="/customer-value">客户价值</el-menu-item>
