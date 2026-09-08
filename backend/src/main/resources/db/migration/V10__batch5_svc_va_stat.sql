@@ -100,8 +100,10 @@ INSERT INTO sys_role_permission (role_id, permission_id) VALUES
 (3, 901), (3, 902), (3, 903), (3, 904), (3, 906);
 
 -- ---------------- 字典：工单类型（1415~1418） ----------------
+-- V2 已插 CONSULT/COMPLAINT/AFTER_SALE，这里 ON CONFLICT DO NOTHING
 INSERT INTO sys_dict (id, dict_type, code, value, sort, created_by, updated_by) VALUES
 (1415, 'ticket_type', 'CONSULT',   '咨询',   1, 0, 0),
 (1416, 'ticket_type', 'COMPLAINT', '投诉',   2, 0, 0),
 (1417, 'ticket_type', 'AFTER_SALE','售后',   3, 0, 0),
-(1418, 'ticket_type', 'OTHER',     '其他',   4, 0, 0);
+(1418, 'ticket_type', 'OTHER',     '其他',   4, 0, 0)
+ON CONFLICT (dict_type, code) DO NOTHING;
