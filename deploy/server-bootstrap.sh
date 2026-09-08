@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO_URL="https://github.com/Mirel-Ssp/crm.git"
 INSTALL_DIR="/opt/crm"
-DEPLOY_DIR="$INSTALL_DIR/customer_management/deploy"
+DEPLOY_DIR="$INSTALL_DIR/deploy"
 
 echo "========================================"
 echo "  CRM 系统部署脚本（阿里云 ACL 3）"
@@ -39,7 +39,7 @@ else
     rm -rf "$INSTALL_DIR"
     git clone "$REPO_URL" "$INSTALL_DIR"
 fi
-cd "$INSTALL_DIR/customer_management"
+cd "$INSTALL_DIR"
 echo "  代码就绪: $(git log --oneline -1)"
 
 # ---- 3. 生成强随机密钥 ----
