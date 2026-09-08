@@ -276,9 +276,16 @@ class TradeFlowIntegrationTest {
                 }
             }).toList();
 
-            // 恰好一个成功一个 40900（数据冲突回滚），杜绝超核
-            Assertions.assertTrue(codes.contains(0), "应恰好一个并发核销成功：codes=" + codes);
-            Assertions.assertTrue(codes.contains(40900), "另一并发核销应返回 40900 数据冲突：codes=" + codes);
+            // 恰好一个成功、一个被拒绝（杜绝超核）。两道并发防线任一触发均安全：
+            //   - 汇款余额预校验读到已提交余额 → 30001（余额不足）
+            //   - 汇款条件更新 CAS 0 行 → 40900（乐观锁数据冲突）
+            // 两种时序下失败方事务均整体回滚，下方真实库断言保证零残留。
+            long success = codes.stream().filter(c -> c == 0).count();
+            Assertions.assertEquals(1, success, "应恰好一个并发核销成功：codes=" + codes);
+            Integer loser = codes.stream().filter(c -> c != 0).findFirst().orElse(null);
+            Assertions.assertNotNull(loser, "应有一个核销被拒绝：codes=" + codes);
+            Assertions.assertTrue(loser == 40900 || loser == 30001,
+                    "失败方应返回 40900（乐观锁冲突）或 30001（余额预校验拦截）：codes=" + codes);
         } finally {
             pool.shutdownNow();
         }

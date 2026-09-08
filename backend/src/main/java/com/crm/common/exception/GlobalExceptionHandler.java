@@ -89,6 +89,16 @@ public class GlobalExceptionHandler {
         return Result.fail(ResultCode.NOT_FOUND);
     }
 
+    /**
+     * 请求体无法读取/解析（JSON 语法错误、字段类型不匹配、枚举非法、日期格式错误等）：
+     * 属于客户端错误，返回 40000 而非 50000（HttpMessageNotReadableException 及其 Jackson 根因）。
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public Result<Void> handleNotReadable(org.springframework.http.converter.HttpMessageNotReadableException e) {
+        log.warn("[BAD_BODY] {}", e.getMessage());
+        return Result.fail(ResultCode.BAD_REQUEST.getCode(), "请求参数格式有误，请检查输入");
+    }
+
     /** 未预期异常：堆栈仅入日志 */
     @ExceptionHandler(Exception.class)
     public Result<Void> handleUnknown(Exception e) {

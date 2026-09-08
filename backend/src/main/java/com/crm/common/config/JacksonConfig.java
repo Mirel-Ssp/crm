@@ -2,6 +2,9 @@ package com.crm.common.config;
 
 import com.crm.common.web.sensitive.SensitiveSerializerModifier;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -12,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * Jackson 定制（SYS-DV-03 脱敏 + B4-P9 日期兼容 + 雪花ID精度保护）
@@ -31,6 +35,7 @@ public class JacksonConfig {
         SimpleModule module = new SimpleModule("sensitive-mask");
         module.setSerializerModifier(new SensitiveSerializerModifier());
         module.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer());
+        module.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer());
         // 雪花 ID 精度保护：Long（对象）与 long（基本类型）共用同一序列化器
         LongSafeSerializer longSerializer = new LongSafeSerializer();
         module.addSerializer(Long.class, longSerializer);
@@ -43,6 +48,32 @@ public class JacksonConfig {
         @Override
         public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
             gen.writeString(value.format(DATE_TIME_FORMATTER));
+        }
+    }
+
+    /**
+     * LocalDateTime 反序列化：同时接受 'yyyy-MM-dd HH:mm:ss'（空格，与本系统序列化输出对称）
+     * 和 ISO 'yyyy-MM-ddTHH:mm:ss'（前端 el-date-picker value-format 输出）两种格式，
+     * 保证“接口输出的值回传可被接受”，避免客户端回显值导致解析失败。
+     */
+    static class LocalDateTimeDeserializer extends JsonDeserializer<LocalDateTime> {
+        private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+        @Override
+        public LocalDateTime deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt)
+                throws IOException {
+            String text = p.getValueAsString();
+            if (text == null || text.isBlank()) {
+                return null;
+            }
+            text = text.trim();
+            try {
+                // 空格格式（本系统序列化输出）
+                return LocalDateTime.parse(text, DATE_TIME_FORMATTER);
+            } catch (DateTimeParseException ignore) {
+                // 回退 ISO（含 'T'，可能带毫秒）
+                return LocalDateTime.parse(text, ISO);
+            }
         }
     }
 
