@@ -76,7 +76,7 @@ Check "sales create customer" ($cust.code -eq 0) "code=$($cust.code)"
 $newCustId = "$($cust.data)"
 Check "snowflake id is string" ($cust.data -is [string]) "id=$newCustId"
 $c3 = Send $sal "GET" "/customers/$newCustId" $null; Check "sales open own customer (id round-trip)" ($c3.code -eq 0) "code=$($c3.code)"
-$c4 = Send $sal "POST" "/customers" @{ name = "ft-cust-$tag" }; Check "dup customer name ->40000" ($c4.code -eq 40000) "code=$($c4.code)"
+$c4 = Send $sal "POST" "/customers" @{ name = "ft-cust-$tag" }; Check "dup customer name ALLOWED (V17)" ($c4.code -eq 0) "code=$($c4.code)"; if ($c4.code -eq 0) { $dupCustId = "$($c4.data)" }
 $c5 = Send $sal "POST" "/customers" @{ level = "NORMAL" }; Check "blank name validation ->40000" ($c5.code -eq 40000) "code=$($c5.code)"
 $adminCust = $c1.data.list | Where-Object { $_.ownerId -eq 1 } | Select-Object -First 1
 $c6 = Send $sal "GET" "/customers/$($adminCust.id)" $null; Check "sales cannot open admin customer ->deny (40300/40400 masking)" ($c6.code -eq 40300 -or $c6.code -eq 40400) "code=$($c6.code)"

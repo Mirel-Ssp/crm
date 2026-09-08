@@ -82,7 +82,7 @@
         </el-form-item>
         <el-form-item label="客户" required>
           <el-select v-model="form.customerId" filterable placeholder="选择客户" style="width: 100%">
-            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in customers" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-row :gutter="12">
@@ -221,7 +221,7 @@ const form = reactive({
 
 async function prepareOptions() {
   const [cs, qs] = await Promise.all([
-    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name }))),
+    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address }))),
     pageQuotes({ status: 'APPROVED', pageNum: 1, pageSize: 100 }).then((d) => d.list.map((q) => ({ id: q.id, quoteNo: q.quoteNo, title: q.title }))),
   ])
   customers.value = cs

@@ -30,7 +30,12 @@
     <!-- 列表 -->
     <el-card shadow="never">
       <el-table :data="rows" v-loading="loading" stripe>
-        <el-table-column prop="name" label="客户名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="name" label="客户名称" min-width="240">
+          <template #default="{ row }">
+            <div>{{ row.name }}</div>
+            <div v-if="row.region || row.address" class="cust-sub">{{ [row.region, row.address].filter(Boolean).join(' · ') }}</div>
+          </template>
+        </el-table-column>
         <el-table-column label="等级" width="110">
           <template #default="{ row }"><el-tag :type="levelTag(row.level)">{{ levelLabel(row.level) }}</el-tag></template>
         </el-table-column>
@@ -238,7 +243,7 @@
       <el-form label-width="100px">
         <el-form-item label="目标客户" required>
           <el-select v-model="mergeForm.targetId" filterable placeholder="保留的客户" style="width: 100%">
-            <el-option v-for="c in mergeCandidates" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in mergeCandidates" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="源客户" required>
@@ -356,7 +361,10 @@ async function onSave() {
       // CRM-C5：录入查重——名称精确命中时提示疑似重复，可选择继续或取消
       const hits = await checkCustomerDuplicate(editForm.name.trim())
       if (hits.length > 0) {
-        const names = hits.map((h) => `「${h.name}」`).join('、')
+        const names = hits.map((h) => {
+          const extra = [h.region, h.address].filter(Boolean).join(' · ')
+          return extra ? `「${h.name}（${extra}）」` : `「${h.name}」`
+        }).join('、')
         await ElMessageBox.confirm(
           `发现疑似重复客户：${names}，是否仍要继续创建？`,
           '查重提示', { confirmButtonText: '仍要创建', cancelButtonText: '取消', type: 'warning' },
@@ -477,7 +485,7 @@ const mergeForm = reactive({ targetId: undefined as number | undefined, sourceId
 
 async function openMerge() {
   const data = await pageCustomers({ pageNum: 1, pageSize: 200 })
-  mergeCandidates.value = data.list.map((c) => ({ id: c.id, name: c.name }))
+  mergeCandidates.value = data.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address }))
   if (mergeCandidates.value.length < 2) {
     ElMessage.warning('数据范围内客户不足 2 个，无可合并对象')
     return
@@ -534,5 +542,10 @@ onMounted(load)
 .tl-content {
   color: #6b7280;
   font-size: 13px;
+}
+.cust-sub {
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 1.3;
 }
 </style>

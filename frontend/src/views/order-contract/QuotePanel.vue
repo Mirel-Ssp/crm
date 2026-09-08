@@ -81,7 +81,7 @@
           <el-col :span="12">
             <el-form-item label="客户" required>
               <el-select v-model="form.customerId" filterable placeholder="选择客户" style="width: 100%">
-                <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+                <el-option v-for="c in customers" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -318,7 +318,7 @@ async function openEdit(row: QuoteRow) {
 
 async function prepareOptions() {
   const [cs, os, items] = await Promise.all([
-    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name }))),
+    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address }))),
     pageOpps({ status: 'OPEN', pageNum: 1, pageSize: 100 }).then((d) => d.list.map((o) => ({ id: o.id, name: o.name }))),
     pageTradeItems({ status: 'LISTED' }),
   ])

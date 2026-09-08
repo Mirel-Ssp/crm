@@ -175,7 +175,7 @@
       <el-form :model="orderForm" label-width="100px">
         <el-form-item label="客户" required>
           <el-select v-model="orderForm.customerId" filterable placeholder="选择客户" style="width: 100%">
-            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in customers" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标的" required>
@@ -264,7 +264,7 @@
         </el-form-item>
         <el-form-item label="客户" required>
           <el-select v-model="remitForm.customerId" filterable placeholder="选择客户" style="width: 100%">
-            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in customers" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-row>
@@ -433,7 +433,7 @@ function onItemPicked() {
 
 async function openOrderCreate() {
   const [cs, items] = await Promise.all([
-    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name }))),
+    pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address }))),
     pageTradeItems({ status: 'LISTED' }),
   ])
   customers.value = cs
@@ -533,7 +533,7 @@ const remitForm = reactive({
 
 async function openRemitCreate() {
   if (customers.value.length === 0) {
-    customers.value = await pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name })))
+    customers.value = await pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address })))
   }
   Object.assign(remitForm, {
     remitNo: '', customerId: undefined, amount: 1,

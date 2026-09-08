@@ -187,7 +187,7 @@
             v-model="createForm.customerId" filterable remote :remote-method="searchCustomers"
             :loading="customerSearching" placeholder="输入客户名称搜索" style="width: 100%" @change="onCustomerChange"
           >
-            <el-option v-for="c in customerOptions" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in customerOptions" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="关联联系人">

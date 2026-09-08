@@ -181,7 +181,7 @@ public class LeadService {
 
     /**
      * 转客户：CLAIMED/ASSIGNED → CONVERTED
-     * 事务内：重名校验 → 建 crm_customer（owner=线索负责人）→ 条件回写 CONVERTED
+     * 事务内：建 crm_customer（owner=线索负责人；V17 起允许同名存在）→ 条件回写 CONVERTED
      */
     @Transactional
     public Long convert(Long uid, Long id) {
@@ -190,13 +190,6 @@ public class LeadService {
             throw new BizException(ResultCode.BAD_REQUEST.getCode(), "仅已领取/已分配的线索可转客户");
         }
         Long ownerId = lead.getOwnerId() == null ? uid : lead.getOwnerId();
-
-        // 客户重名校验（crm_customer name UNIQUE WHERE deleted=0）
-        Long dup = customerMapper.selectCount(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getName, lead.getCompanyName()));
-        if (dup != null && dup > 0) {
-            throw new BizException(ResultCode.BAD_REQUEST.getCode(), "客户名称已存在，无法转换");
-        }
 
         CrmCustomer customer = new CrmCustomer();
         customer.setName(lead.getCompanyName());

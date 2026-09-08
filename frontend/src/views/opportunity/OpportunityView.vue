@@ -122,7 +122,7 @@
       <el-form :model="editForm" label-width="100px">
         <el-form-item label="关联客户" required>
           <el-select v-model="editForm.customerId" filterable placeholder="选择客户" style="width: 100%" :disabled="!!editForm.id">
-            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in customers" :key="c.id" :label="c.region || c.address ? `${c.name}（${[c.region, c.address].filter(Boolean).join(' · ')}）` : c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="商机名称" required><el-input v-model="editForm.name" maxlength="128" /></el-form-item>
@@ -217,13 +217,13 @@ const editForm = reactive({
 })
 
 async function openCreate() {
-  customers.value = await pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name })))
+  customers.value = await pageCustomers({ pageNum: 1, pageSize: 200 }).then((d) => d.list.map((c) => ({ id: c.id, name: c.name, region: c.region, address: c.address })))
   Object.assign(editForm, { id: 0, customerId: undefined, name: '', amount: 0, currency: 'CNY', expectedDate: '', stage: 1, remark: '' })
   editVisible.value = true
 }
 
 async function openEdit(row: OppRow) {
-  customers.value = [{ id: row.customerId, name: row.customerName }]
+  customers.value = [{ id: row.customerId, name: row.customerName, region: '', address: '' }]
   Object.assign(editForm, {
     id: row.id, customerId: row.customerId, name: row.name, amount: row.amount,
     currency: row.currency || 'CNY', expectedDate: row.expectedDate, stage: row.stage, remark: '',

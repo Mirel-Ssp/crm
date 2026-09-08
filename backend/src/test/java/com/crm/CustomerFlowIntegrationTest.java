@@ -97,13 +97,13 @@ class CustomerFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
-        // 重名校验：再建同名应失败（业务码 40000）
+        // V17：允许同名存在（软查重仅前端弹窗提示），再建同名应成功
         mockMvc.perform(post("/api/customers")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + uniqueName + "-edit\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(40000));
+                .andExpect(jsonPath("$.code").value(0));
 
         // 软删除后详情应 404
         mockMvc.perform(delete("/api/customers/" + id)

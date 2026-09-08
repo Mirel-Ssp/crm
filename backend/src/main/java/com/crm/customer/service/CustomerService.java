@@ -103,14 +103,9 @@ public class CustomerService {
         return new PageResult<>(rows, result.getTotal(), result.getCurrent(), result.getSize(), result.getPages());
     }
 
-    /** 新增：归属人=创建人；重名校验（C0102）；生命周期初始 POTENTIAL 并留痕 */
+    /** 新增：归属人=创建人；允许同名存在（V17）；软查重 checkDuplicate 已在前端作为疑似重复提示；生命周期初始 POTENTIAL 并留痕 */
     @Transactional
     public Long create(Long uid, CustomerSaveRequest req) {
-        Long dup = customerMapper.selectCount(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getName, req.getName()));
-        if (dup != null && dup > 0) {
-            throw new BizException(ResultCode.BAD_REQUEST.getCode(), "客户名称已存在");
-        }
         CrmCustomer c = new CrmCustomer();
         copy(req, c);
         c.setOwnerId(uid);
@@ -126,17 +121,10 @@ public class CustomerService {
         return c.getId();
     }
 
-    /** 编辑：范围校验（非本人且非 ALL 拒绝）；等级变更留痕（CRM-C3） */
+    /** 编辑：范围校验（非本人且非 ALL 拒绝）；允许改名到同名（V17）；等级变更留痕（CRM-C3） */
     @Transactional
     public void update(Long uid, Long id, CustomerSaveRequest req) {
         CrmCustomer c = requireVisible(uid, id);
-        // 重名校验（排除自身）
-        Long dup = customerMapper.selectCount(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getName, req.getName())
-                .ne(CrmCustomer::getId, id));
-        if (dup != null && dup > 0) {
-            throw new BizException(ResultCode.BAD_REQUEST.getCode(), "客户名称已存在");
-        }
         String oldLevel = c.getLevel();
         copy(req, c);
         customerMapper.updateById(c);
@@ -202,7 +190,7 @@ public class CustomerService {
         ensureLifecycle(uid, id, to);
     }
 
-    /** 查重（CRM-C5）：名称精确重复 + 联系人电话命中；仅数据范围内客户 */
+    /** 查重（CRM-C5 / V17 增强）：名称精确重复 + 联系人电话命中；仅数据范围内客户；返回含 region/address 辅助区分 */
     public List<Map<String, Object>> checkDuplicate(Long uid, String name, String phone) {
         List<Map<String, Object>> hits = new ArrayList<>();
         List<Long> visibleIds = scopeService.visibleOwnerIds(uid);
@@ -211,7 +199,9 @@ public class CustomerService {
                     .eq(CrmCustomer::getName, name);
             applyScope(w, visibleIds);
             customerMapper.selectList(w).forEach(c -> hits.add(Map.of(
-                    "id", c.getId(), "name", c.getName(), "matchType", "NAME")));
+                    "id", c.getId(), "name", c.getName(),
+                    "region", nvl(c.getRegion()), "address", nvl(c.getAddress()),
+                    "matchType", "NAME")));
         }
         if (StringUtils.hasText(phone)) {
             List<CrmContact> contacts = contactMapper.selectList(new LambdaQueryWrapper<CrmContact>()
@@ -222,7 +212,9 @@ public class CustomerService {
                         .in(CrmCustomer::getId, customerIds);
                 applyScope(w, visibleIds);
                 customerMapper.selectList(w).forEach(c -> hits.add(Map.of(
-                        "id", c.getId(), "name", c.getName(), "matchType", "PHONE")));
+                        "id", c.getId(), "name", c.getName(),
+                        "region", nvl(c.getRegion()), "address", nvl(c.getAddress()),
+                        "matchType", "PHONE")));
             }
         }
         return hits;
